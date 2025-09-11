@@ -12,7 +12,7 @@ export function sanitizeRequest({
   return {
     method,
     url,
-    header: Object.entries(headers).map(([key, value]) => ({
+    headers: Object.entries(headers).map(([key, value]) => ({
       key,
       value,
     })),

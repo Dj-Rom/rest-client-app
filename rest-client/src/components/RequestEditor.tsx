@@ -19,13 +19,14 @@ export interface RequestInput {
 
 const METHODS: Method[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 
+
+
 export default function RequestEditor() {
   const { t } = useTranslation();
   const { variables } = useVariableContext();
 
   const [method, setMethod] = useState<Method>("GET");
-  // eslint-disable-next-line prefer-const
-  let [url, setUrl] = useState("");
+  const [url, setUrl] = useState("");
   const [headers, setHeaders] = useState<Record<string, string>>({});
   const [body, setBody] = useState("");
   const [response, setResponse] = useState<RequestResult | null>(null);
@@ -35,22 +36,32 @@ export default function RequestEditor() {
     setHeaders((prev) => ({ ...prev, [key]: value }));
   };
 
-  function findVariablesInUrl(url: string) {
-    const variables = JSON.parse(
-      localStorage.getItem("rest-client-variables") as string,
-    );
-    Object.keys(variables).forEach((key) => {
-      url = url.replace(`{{${key}}}`, variables[key]);
+  const findVariablesInUrl = (inputUrl: string) => {
+    const stored = localStorage.getItem("rest-client-variables");
+    if (!stored) return inputUrl;
+
+    let parsed: Record<string, string> = {};
+    try {
+      parsed = JSON.parse(stored);
+    } catch {
+      return inputUrl;
+    }
+
+    Object.keys(parsed).forEach((key) => {
+      inputUrl = inputUrl.replace(`{{${key}}}`, parsed[key]);
     });
-    return url;
-  }
+    return inputUrl;
+  };
+
   const handleSend = async () => {
     if (!url.trim()) return;
 
+    const finalUrl = findVariablesInUrl(url);
+    setUrl(finalUrl);
     setLoading(true);
+
     const start = performance.now();
     let userId = "";
-    const finalUrl = findVariablesInUrl(url);
 
     try {
       const user = await getCurrentUser();
@@ -64,38 +75,31 @@ export default function RequestEditor() {
         body,
         variables,
       });
-      setResponse(result as RequestResult);
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      setResponse(result);
 
       const duration = Math.round(performance.now() - start);
       await saveRequest(userId, method, finalUrl, result.status || 0, duration);
     } catch (err: unknown) {
       const duration = Math.round(performance.now() - start);
+      const errorMessage =
+          err instanceof Error ? err.message : typeof err === "string" ? err : "Request failed";
 
       const fallbackResponse: RequestResult = {
         status: 0,
         statusText: "Error",
         duration,
         data: null,
-        headers: {} as Record<string, string>,
-        error:
-          err instanceof Error
-            ? err.message
-            : typeof err === "string"
-              ? err
-              : "Request failed",
+        headers: {},
+        error: errorMessage,
       };
 
       setResponse(fallbackResponse);
 
-      let errorMessage = "Request failed";
-
-      if (err instanceof Error) errorMessage = err.message;
-      else if (typeof err === "string") errorMessage = err;
-
-      setResponse(fallbackResponse);
-
       if (userId) {
-        await saveRequest(userId, method, finalUrl, 0, duration, errorMessage);
+        await saveRequest(userId, method, finalUrl, 0, duration, fallbackResponse.error);
       }
     } finally {
       setLoading(false);
@@ -103,87 +107,88 @@ export default function RequestEditor() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-2 items-center">
-        <select
-          value={method}
-          onChange={(e) => setMethod(e.target.value as Method)}
-          className="border px-2 py-1 rounded"
-        >
-          {METHODS.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
+      <div className="space-y-6">
+        {/* Method & URL */}
+        <div className="flex gap-2 items-center">
+          <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value as Method)}
+              className="border px-2 py-1 rounded"
+          >
+            {METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+            ))}
+          </select>
+          <input
+              type="text"
+              placeholder={t("url")}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="flex-grow border px-2 py-1 rounded"
+          />
+          <button
+              onClick={handleSend}
+              className="bg-blue-600 text-white px-4 py-1 rounded"
+              disabled={loading}
+          >
+            {loading ? "..." : t("send")}
+          </button>
+        </div>
+
+        {/* Headers */}
+        <div>
+          <h3 className="font-semibold mb-2">{t("headers")}</h3>
+          {Object.entries(headers).map(([key, value], idx) => (
+              <div key={idx} className="flex gap-2 mb-1">
+                <input
+                    type="text"
+                    value={key}
+                    onChange={(e) => {
+                      const newKey = e.target.value;
+                      const updated = { ...headers };
+                      delete updated[key];
+                      updated[newKey] = value;
+                      setHeaders(updated);
+                    }}
+                    className="border px-2 py-1 w-1/3"
+                />
+                <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => handleHeaderChange(key, e.target.value)}
+                    className="border px-2 py-1 w-2/3"
+                />
+              </div>
           ))}
-        </select>
-        <input
-          type="text"
-          placeholder={t("url")}
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="flex-grow border px-2 py-1 rounded"
-        />
-        <button
-          onClick={handleSend}
-          className="bg-blue-600 text-white px-4 py-1 rounded"
-          disabled={loading}
-        >
-          {loading ? "..." : t("send")}
-        </button>
-      </div>
+          <button
+              onClick={() => handleHeaderChange("", "")}
+              className="text-sm text-blue-600 mt-2"
+          >
+            + Add Header
+          </button>
+        </div>
 
-      {/* Headers */}
-      <div>
-        <h3 className="font-semibold mb-2">{t("headers")}</h3>
-        {Object.entries(headers).map(([key, value], idx) => (
-          <div key={idx} className="flex gap-2 mb-1">
-            <input
-              type="text"
-              value={key}
-              onChange={(e) => {
-                const newKey = e.target.value;
-                const updated = { ...headers };
-                delete updated[key];
-                updated[newKey] = value;
-                setHeaders(updated);
-              }}
-              className="border px-2 py-1 w-1/3"
-            />
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => handleHeaderChange(key, e.target.value)}
-              className="border px-2 py-1 w-2/3"
-            />
-          </div>
-        ))}
-        <button
-          onClick={() => handleHeaderChange("", "")}
-          className="text-sm text-blue-600 mt-2"
-        >
-          + Add Header
-        </button>
-      </div>
+        {/* Body */}
+        <div>
+          <h3 className="font-semibold mb-2">{t("body")}</h3>
+          <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={6}
+              className="w-full border px-2 py-1 rounded"
+          />
+        </div>
 
-      {/* Body */}
-      <div>
-        <h3 className="font-semibold mb-2">{t("body")}</h3>
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={6}
-          className="w-full border px-2 py-1 rounded"
+        {/* Response & Code Generator */}
+        {response && <ResponseViewer response={response} />}
+        <CodeGenerator
+            method={method}
+            url={findVariablesInUrl(url)}
+            header={Object.entries(headers).map(([key, value]) => ({ key, value }))}
+            body={body}
         />
       </div>
-
-      {/* Response + Code Generator */}
-      {response && <ResponseViewer response={response} />}
-      <CodeGenerator
-        method={method}
-        url={findVariablesInUrl(url)}
-        header={Object.entries(headers).map(([key, value]) => ({ key, value }))}
-        body={body}
-      />
-    </div>
   );
 }
