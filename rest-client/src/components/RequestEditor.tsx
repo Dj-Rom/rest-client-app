@@ -24,7 +24,8 @@ export default function RequestEditor() {
   const { variables } = useVariableContext();
 
   const [method, setMethod] = useState<Method>("GET");
-  const [url, setUrl] = useState("");
+  // eslint-disable-next-line prefer-const
+  let [url, setUrl] = useState("");
   const [headers, setHeaders] = useState<Record<string, string>>({});
   const [body, setBody] = useState("");
   const [response, setResponse] = useState<RequestResult | null>(null);
@@ -34,12 +35,20 @@ export default function RequestEditor() {
     setHeaders((prev) => ({ ...prev, [key]: value }));
   };
 
+  function findVariablesInUrl(url: string) {
+    const variables = JSON.parse(localStorage.getItem("rest-client-variables") as string);
+    Object.keys(variables).forEach(key => {
+      url = url.replace(`{{${key}}}`, variables[key]);
+    });
+    return url
+  }
   const handleSend = async () => {
     if (!url.trim()) return;
-    setLoading(true);
 
+    setLoading(true);
     const start = performance.now();
     let userId = "";
+    const finalUrl = findVariablesInUrl(url);
 
     try {
       const user = await getCurrentUser();
@@ -48,37 +57,40 @@ export default function RequestEditor() {
 
       const result = await sendRequest({
         method,
-        url,
+        url: finalUrl,
         headers,
         body,
         variables,
       });
-      setResponse(result);
+      setResponse(result as RequestResult);
+
 
       const duration = Math.round(performance.now() - start);
-      await saveRequest(userId, method, url, result.status || 0, duration);
-    } catch (err: any) {
+      await saveRequest(userId, method, finalUrl, result.status || 0, duration);
+    } catch (err: unknown) {
       const duration = Math.round(performance.now() - start);
+
       const fallbackResponse: RequestResult = {
         status: 0,
         statusText: "Error",
         duration,
         data: null,
-        headers: {},
-        error: err.message || "Request failed",
+        headers: {} as Record<string,string>,
+        error: err instanceof Error ? err.message : typeof err === "string" ? err : "Request failed",
       };
 
       setResponse(fallbackResponse);
 
+      let errorMessage = "Request failed";
+
+      if (err instanceof Error) errorMessage = err.message;
+      else if (typeof err === "string") errorMessage = err;
+
+
+      setResponse(fallbackResponse);
+
       if (userId) {
-        await saveRequest(
-          userId,
-          method,
-          url,
-          0,
-          duration,
-          fallbackResponse.error,
-        );
+        await saveRequest(userId, method, finalUrl, 0, duration, errorMessage);
       }
     } finally {
       setLoading(false);
@@ -87,7 +99,6 @@ export default function RequestEditor() {
 
   return (
     <div className="space-y-6">
-      {/* Method + URL + Send */}
       <div className="flex gap-2 items-center">
         <select
           value={method}
@@ -162,7 +173,7 @@ export default function RequestEditor() {
 
       {/* Response + Code Generator */}
       {response && <ResponseViewer response={response} />}
-      <CodeGenerator method={method} url={url} headers={headers} body={body} />
+      <CodeGenerator method={method} url={findVariablesInUrl(url)} header={Object.entries(headers).map(([key, value]) => ({ key, value }))} body={body} />
     </div>
   );
 }

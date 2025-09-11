@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext.tsx";
+import LanguageSwitcher from "./LanguageSwitcher.tsx";
 
 export default function Header() {
   const { pathname } = useLocation();
@@ -63,7 +64,9 @@ export default function Header() {
         ) : (
           <Link to={"/signin"}> Login </Link>
         )}
+        <LanguageSwitcher />
       </nav>
+
     </header>
   );
 }
