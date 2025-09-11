@@ -32,3 +32,4 @@ A clean and intuitive REST client built with **React + TypeScript**, integrated 
 
 cd rest-client
 npm install
+```

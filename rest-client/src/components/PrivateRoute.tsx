@@ -1,13 +1,13 @@
-import { type JSX, useContext } from "react";
+import { type JSX} from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext";
+import { useAuthContext } from "../context/AuthContext";
 
 interface Props {
   children: JSX.Element;
 }
 
 export default function PrivateRoute({ children }: Props) {
-  const { user } = useContext(AuthContext);
+  const { user } = useAuthContext();
   const location = useLocation();
 
   if (!user) {

@@ -36,11 +36,13 @@ export default function RequestEditor() {
   };
 
   function findVariablesInUrl(url: string) {
-    const variables = JSON.parse(localStorage.getItem("rest-client-variables") as string);
-    Object.keys(variables).forEach(key => {
+    const variables = JSON.parse(
+      localStorage.getItem("rest-client-variables") as string,
+    );
+    Object.keys(variables).forEach((key) => {
       url = url.replace(`{{${key}}}`, variables[key]);
     });
-    return url
+    return url;
   }
   const handleSend = async () => {
     if (!url.trim()) return;
@@ -64,7 +66,6 @@ export default function RequestEditor() {
       });
       setResponse(result as RequestResult);
 
-
       const duration = Math.round(performance.now() - start);
       await saveRequest(userId, method, finalUrl, result.status || 0, duration);
     } catch (err: unknown) {
@@ -75,8 +76,13 @@ export default function RequestEditor() {
         statusText: "Error",
         duration,
         data: null,
-        headers: {} as Record<string,string>,
-        error: err instanceof Error ? err.message : typeof err === "string" ? err : "Request failed",
+        headers: {} as Record<string, string>,
+        error:
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+              ? err
+              : "Request failed",
       };
 
       setResponse(fallbackResponse);
@@ -85,7 +91,6 @@ export default function RequestEditor() {
 
       if (err instanceof Error) errorMessage = err.message;
       else if (typeof err === "string") errorMessage = err;
-
 
       setResponse(fallbackResponse);
 
@@ -173,7 +178,12 @@ export default function RequestEditor() {
 
       {/* Response + Code Generator */}
       {response && <ResponseViewer response={response} />}
-      <CodeGenerator method={method} url={findVariablesInUrl(url)} header={Object.entries(headers).map(([key, value]) => ({ key, value }))} body={body} />
+      <CodeGenerator
+        method={method}
+        url={findVariablesInUrl(url)}
+        header={Object.entries(headers).map(([key, value]) => ({ key, value }))}
+        body={body}
+      />
     </div>
   );
 }

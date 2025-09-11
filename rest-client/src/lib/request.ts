@@ -18,20 +18,19 @@ export interface RequestResult {
 }
 
 export async function sendRequest({
-                                    method,
-                                    url,
-                                    headers,
-                                    body,
-                                    variables,
-                                  }: RequestInput): Promise<{
+  method,
+  url,
+  headers,
+  body,
+  variables,
+}: RequestInput): Promise<{
   status: number;
   statusText: string;
   duration: number;
   data: object | null | string;
   headers: object;
-  error: unknown
+  error: unknown;
 }> {
-
   try {
     const {
       url: finalUrl,
@@ -49,7 +48,9 @@ export async function sendRequest({
     const response = await fetch(finalUrl, {
       method,
       headers: finalHeaders,
-      body: ["GET", "HEAD"].includes(method.toUpperCase()) ? undefined : finalBody,
+      body: ["GET", "HEAD"].includes(method.toUpperCase())
+        ? undefined
+        : finalBody,
     });
 
     const duration = performance.now() - start;
@@ -59,12 +60,9 @@ export async function sendRequest({
 
     if (contentType?.includes("application/json")) {
       data = await response.json();
-
     } else {
       data = await response.text();
-
     }
-
 
     const headersObj: Record<string, string> = {};
     response.headers.forEach((value, key) => {
@@ -87,7 +85,7 @@ export async function sendRequest({
       duration: Math.round(duration),
       data: null,
       headers: {},
-      error:  String(error),
+      error: String(error),
     };
   }
 }

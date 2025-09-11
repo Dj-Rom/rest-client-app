@@ -66,7 +66,6 @@ export default function Header() {
         )}
         <LanguageSwitcher />
       </nav>
-
     </header>
   );
 }
