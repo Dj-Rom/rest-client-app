@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 export default function SignInPage() {
   const { t } = useTranslation();
-  const { login } = useAuthContext();
+  const { user, login } = useAuthContext(); // добавим login
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -13,17 +13,22 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const user = await login(email, password);
-      console.log("Signed in as:", user.id);
-      navigate("/rest");
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+      await login(email, password);
+      navigate("/");
+    } catch (err) {
+      setError(err?.message || "Login failed");
     } finally {
       setLoading(false);
     }

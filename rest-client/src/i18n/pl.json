@@ -23,5 +23,6 @@
   "language": "Język",
   "welcome": "Witamy w Kliencie REST",
   "error": "Coś poszło nie tak",
-  "notFound": "Strona nie została znaleziona"
+  "notFound": "Strona nie została znaleziona",
+  "user": "Użytkownik"
 }

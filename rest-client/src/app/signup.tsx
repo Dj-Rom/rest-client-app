@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { signupUser } from "../lib/auth";
 import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "../context/AuthContext.tsx";
 
 export default function SignUpPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-
+  const { user } = useAuthContext();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -20,7 +25,7 @@ export default function SignUpPage() {
     try {
       const user = await signupUser(email, password);
       console.log("Signed up:", user);
-      navigate("/rest"); // redirect after signup
+      navigate("/signin"); // redirect after signup
     } catch (err: any) {
       setError(err.message || "Signup failed");
     } finally {

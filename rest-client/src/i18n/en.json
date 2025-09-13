@@ -23,5 +23,6 @@
   "language": "Language",
   "welcome": "Welcome to REST Client",
   "error": "Something went wrong",
-  "notFound": "Page not found"
+  "notFound": "Page not found",
+  "user": "User"
 }

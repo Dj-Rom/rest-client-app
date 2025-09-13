@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { fetchRequestHistory, type RequestMetadata } from "../lib/api";
-
 import { getCurrentUser } from "../lib/auth";
+import { t } from "i18next";
+import type { HistoryListProps } from "../app/history.tsx";
 
-export default function HistoryList() {
+export default function HistoryList({
+  onSelect,
+}: {
+  onSelect?: HistoryListProps;
+}) {
   const [history, setHistory] = useState<RequestMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,50 +20,48 @@ export default function HistoryList() {
         if (!user) throw new Error("You must be signed in to view history.");
 
         const data = await fetchRequestHistory(user.id);
-        const sorted = data.sort(
-          (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+        setHistory(
+          data.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()),
         );
-        setHistory(sorted);
       } catch (err: any) {
         setError(err.message || "Failed to load history.");
       } finally {
         setLoading(false);
       }
     };
-
     loadHistory();
   }, []);
-
-  const handleReplay = (entry: RequestMetadata) => {
-    window.open(`http://${entry.url}`, "_blank", "opener,referrer");
-  };
 
   if (loading) return <p className="text-gray-500">Loading history...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
   if (history.length === 0)
     return <p className="text-gray-500">No history found.</p>;
 
+  const handleClick = (entry: RequestMetadata) => {
+    onSelect?.(entry);
+  };
+
   return (
     <div className="space-y-4">
       {history.map((entry, index) => (
         <div
           key={index}
-          className="history-entry"
-          onClick={() => handleReplay(entry)}
+          className="history-entry cursor-pointer p-2 border rounded hover:bg-gray-100"
+          onClick={() => handleClick(entry)}
         >
-          <div className="history-header">
-            <span className="history-method">{entry.method}</span>
-            <span className="history-timestamp">
-              {entry.timestamp.toLocaleString()}
+          <div>
+            {t("method")}:{" "}
+            <strong style={{ color: "blue" }}> {entry.method} </strong>{" "}
+            {t("url")}: {entry.url}
+            <span style={{ color: "green", fontSize: 20 }}>
+              {" "}
+              <strong style={{ color: "black" }}>{t("status")}: </strong>{" "}
+              {entry.status}
             </span>
+            <span style={{ color: "red" }}>{entry.error}</span>
           </div>
-          <div className="history-url">{entry.url}</div>
-          <div className="history-meta">
-            Status: <span className="status">{entry.status}</span> | Duration:{" "}
-            {entry.duration}ms
-            {entry.error && (
-              <span className="error"> | Error: {entry.error}</span>
-            )}
+          <div style={{ color: "gray" }}>
+            {entry.timestamp.toLocaleString()}
           </div>
         </div>
       ))}

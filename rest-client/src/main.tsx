@@ -4,17 +4,17 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./app/routes";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./lib/i18n";
-import { AuthProvider } from "./context/AuthContext.tsx";
-import { VariableProvider } from "./context/VariableContext.tsx";
+import { AuthProvider } from "./context/AuthContext";
+import { VariableProvider } from "./context/VariableContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <AuthProvider>
-        <VariableProvider>
+      <VariableProvider>
+        <AuthProvider>
           <RouterProvider router={router} />
-        </VariableProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </VariableProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );
