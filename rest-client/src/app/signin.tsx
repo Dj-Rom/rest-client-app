@@ -28,7 +28,11 @@ export default function SignInPage() {
       await login(email, password);
       navigate("/");
     } catch (err) {
-      setError(err?.message || "Login failed");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("login failed");
+      }
     } finally {
       setLoading(false);
     }

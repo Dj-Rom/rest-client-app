@@ -1,4 +1,4 @@
-import { useState, useEffect, type SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { sendRequest, type RequestResult } from "../lib/request";
 import ResponseViewer from "./ResponseViewer";
@@ -102,7 +102,7 @@ export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
   }: {
     loading: boolean;
     onClick: () => void;
-    t;
+    t: (key: string) => string;
   }) {
     const [dots, setDots] = useState("");
 
