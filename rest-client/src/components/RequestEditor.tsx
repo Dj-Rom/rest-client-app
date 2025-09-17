@@ -32,7 +32,6 @@ export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
   const [response, setResponse] = useState<RequestResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-
   useEffect(() => {
     if (!restoreRequest?.restoreRequest) return;
     const r = restoreRequest.restoreRequest;
