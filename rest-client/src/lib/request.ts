@@ -1,7 +1,7 @@
 import { replaceVariables } from "./replaceVariables";
 
 interface RequestInput {
-  method: string; // Method from fetch is just string
+  method: string;
   url: string;
   headers: Record<string, string>;
   body: string;
@@ -9,10 +9,12 @@ interface RequestInput {
 }
 
 export interface RequestResult {
+  method: string;
+  url: string;
   status: number;
   statusText: string;
   duration: number;
-  data: null;
+  data: string | Record<string, unknown> | null;
   headers: Record<string, string>;
   error?: string;
 }
@@ -23,14 +25,7 @@ export async function sendRequest({
   headers,
   body,
   variables,
-}: RequestInput): Promise<{
-  status: number;
-  statusText: string;
-  duration: number;
-  data: object | null | string;
-  headers: object;
-  error: unknown;
-}> {
+}: RequestInput): Promise<RequestResult> {
   try {
     const {
       url: finalUrl,
@@ -55,11 +50,11 @@ export async function sendRequest({
 
     const duration = performance.now() - start;
 
-    let data: object | string;
+    let data: string | Record<string, unknown>;
     const contentType = response.headers.get("content-type");
 
     if (contentType?.includes("application/json")) {
-      data = await response.json();
+      data = (await response.json()) as Record<string, unknown>;
     } else {
       data = await response.text();
     }
@@ -70,22 +65,30 @@ export async function sendRequest({
     });
 
     return {
-      error: undefined,
+      method,
+      url: finalUrl,
       status: response.status,
       statusText: response.statusText,
       duration: Math.round(duration),
-      data: data,
+      data,
       headers: headersObj,
     };
-  } catch (error: unknown) {
+  } catch (error) {
     const duration = performance.now();
     return {
+      method,
+      url,
       status: 0,
       statusText: "Network Error",
       duration: Math.round(duration),
       data: null,
       headers: {},
-      error: String(error),
+      error:
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "Unknown error",
     };
   }
 }

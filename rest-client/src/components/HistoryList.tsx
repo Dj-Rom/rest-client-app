@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { fetchRequestHistory, type RequestMetadata } from "../lib/api";
 import { getCurrentUser } from "../lib/auth";
 import { t } from "i18next";
-import type { HistoryPageProps } from "../app/history.tsx";
 
-export default function HistoryList({ onSelect }: HistoryPageProps) {
+export interface HistoryListProps {
+  onSelect?: (entry: RequestMetadata) => void;
+}
+
+export default function HistoryList({ onSelect }: HistoryListProps) {
   const [history, setHistory] = useState<RequestMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,34 +40,31 @@ export default function HistoryList({ onSelect }: HistoryPageProps) {
   if (history.length === 0)
     return <p className="text-gray-500">No history found.</p>;
 
-  const handleClick = (entry: RequestMetadata) => {
-    onSelect?.(entry);
-
-    return (
-      <div className="space-y-4">
-        {history.map((entry, index) => (
-          <div
-            key={index}
-            className="history-entry cursor-pointer p-2 border rounded hover:bg-gray-100"
-            onClick={() => handleClick(entry)}
-          >
-            <div>
-              {t("method")}:{" "}
-              <strong style={{ color: "blue" }}>{entry.method}</strong>{" "}
-              {t("url")}: {entry.url}
-              <span style={{ color: "green", fontSize: 20 }}>
-                {" "}
-                <strong style={{ color: "black" }}>{t("status")}: </strong>{" "}
-                {entry.status}
-              </span>
-              <span style={{ color: "red" }}>{entry.error}</span>
-            </div>
-            <div style={{ color: "gray" }}>
-              {entry.timestamp.toLocaleString()}
-            </div>
+  return (
+    <div className="space-y-4">
+      {history.map((entry, index) => (
+        <div
+          key={index}
+          className="history-entry cursor-pointer p-2 border rounded hover:bg-gray-100"
+          onClick={() => onSelect?.(entry)}
+        >
+          <div>
+            {t("method")}:{" "}
+            <strong style={{ color: "blue" }}>{entry.method}</strong> {t("url")}
+            : {entry.url}
+            <span style={{ color: "green", fontSize: 20 }}>
+              {" "}
+              <strong style={{ color: "black" }}>{t("status")}: </strong>{" "}
+              {entry.status}
+            </span>{" "}
+            <br />
+            <span style={{ color: "red" }}>{entry.error}</span>
           </div>
-        ))}
-      </div>
-    );
-  };
+          <div style={{ color: "gray" }}>
+            {entry.timestamp.toLocaleString()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }

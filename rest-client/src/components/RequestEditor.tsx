@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next";
 import { sendRequest, type RequestResult } from "../lib/request";
 import ResponseViewer from "./ResponseViewer";
 import CodeGenerator from "./CodeGenerator";
+import { replaceVariablesInString } from "../lib/replaceVariables";
+import { saveRequest } from "../lib/api";
+import { useAuthContext } from "../context/AuthContext";
 
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 const METHODS: Method[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
@@ -20,6 +23,7 @@ interface RequestEditorProps {
 
 export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
   const { t } = useTranslation();
+  const { user } = useAuthContext();
 
   const [method, setMethod] = useState<Method>("GET");
   const [url, setUrl] = useState("");
@@ -28,12 +32,11 @@ export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
   const [response, setResponse] = useState<RequestResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+
   useEffect(() => {
     if (!restoreRequest?.restoreRequest) return;
-
     const r = restoreRequest.restoreRequest;
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
+    // @ts-expect-error allow functional updater
     setMethod(r.method ?? "GET");
     setUrl(r.url ?? "");
     setHeaders(r.headers ?? {});
@@ -46,55 +49,81 @@ export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
 
   const handleSend = async () => {
     if (!url.trim()) return;
+
+    const replacedUrl = replaceVariablesInString(url);
+    setUrl(replacedUrl);
     setLoading(true);
 
-    // Prepare URL attempts
     const tryUrls = [
-      url.startsWith("http://") || url.startsWith("https://")
-        ? url
-        : `http://${url}`,
-      url.startsWith("http://") || url.startsWith("https://")
+      replacedUrl.startsWith("http://") || replacedUrl.startsWith("https://")
+        ? replacedUrl
+        : `http://${replacedUrl}`,
+      replacedUrl.startsWith("http://") || replacedUrl.startsWith("https://")
         ? ""
-        : `https://${url}`,
-    ].filter(Boolean); // remove empty if original URL has http/https
+        : `https://${replacedUrl}`,
+    ].filter(Boolean);
 
     let lastError: unknown = null;
 
     for (const currentUrl of tryUrls) {
       try {
-        const finalUrl = ["GET", "HEAD"].includes(method.toUpperCase())
-          ? `https://api.allorigins.win/raw?url=${encodeURIComponent(currentUrl)}`
-          : currentUrl;
-
         const result = await sendRequest({
           method,
-          url: finalUrl,
+          url: currentUrl,
           headers,
           body,
           variables: {},
         });
 
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
         setResponse(result);
+        if (user) {
+          await saveRequest(
+            user.id,
+            result.method,
+            result.url,
+            result.status,
+            result.duration,
+            result.error ?? undefined,
+          );
+        }
         setLoading(false);
-        return; // success
+        return;
       } catch (err) {
         lastError = err;
       }
     }
 
-    setResponse({
+    const failedResponse: RequestResult = {
+      method,
+      url,
       status: 0,
       statusText: "Error",
       duration: 0,
       data: null,
       headers: {},
-      error: lastError instanceof Error ? lastError.message : String(lastError),
-    });
+      error:
+        lastError instanceof Error
+          ? lastError.message
+          : typeof lastError === "string"
+            ? lastError
+            : "Unknown error",
+    };
+
+    setResponse(failedResponse);
+    if (user) {
+      await saveRequest(
+        user.id,
+        failedResponse.method,
+        failedResponse.url,
+        failedResponse.status,
+        failedResponse.duration,
+        failedResponse.error ?? undefined,
+      );
+    }
 
     setLoading(false);
   };
+
   function SendButton({
     loading,
     onClick,
@@ -129,6 +158,7 @@ export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
       </button>
     );
   }
+
   return (
     <div className="space-y-6">
       {/* Method & URL */}
@@ -151,7 +181,6 @@ export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
           onChange={(e) => setUrl(e.target.value)}
           className="flex-grow border px-2 py-1 rounded"
         />
-
         <SendButton loading={loading} onClick={handleSend} t={t} />
       </div>
 
@@ -203,7 +232,7 @@ export default function RequestEditor({ restoreRequest }: RequestEditorProps) {
       {response && <ResponseViewer response={response} />}
       <CodeGenerator
         method={method}
-        url={url}
+        url={replaceVariablesInString(url)}
         header={Object.entries(headers).map(([key, value]) => ({ key, value }))}
         body={body}
       />
